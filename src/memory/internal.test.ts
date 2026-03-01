@@ -167,6 +167,34 @@ describe("chunkMarkdown", () => {
       expect(chunk.text.length).toBeLessThanOrEqual(maxChars);
     }
   });
+
+  it("chunks by markdown sections when strategy is markdown-sections", () => {
+    const content = ["# Alpha", "one", "## Beta", "two", "### Gamma", "three"].join("\n");
+    const chunks = chunkMarkdown(content, {
+      strategy: "markdown-sections",
+      tokens: 400,
+      overlap: 0,
+      sectionMinChars: 1,
+      sectionMaxChars: 1000,
+    });
+    expect(chunks.length).toBeGreaterThanOrEqual(3);
+    expect(chunks[0]?.text.startsWith("# Alpha")).toBe(true);
+    expect(chunks.some((chunk) => chunk.text.includes("## Beta"))).toBe(true);
+  });
+
+  it("falls back to length chunking for oversized markdown sections", () => {
+    const largeBody = "x".repeat(5000);
+    const content = `# Big\n${largeBody}\n# Small\nok`;
+    const chunks = chunkMarkdown(content, {
+      strategy: "markdown-sections",
+      tokens: 200,
+      overlap: 0,
+      sectionMinChars: 1,
+      sectionMaxChars: 800,
+    });
+    expect(chunks.length).toBeGreaterThan(2);
+    expect(chunks.every((chunk) => chunk.text.trim().length > 0)).toBe(true);
+  });
 });
 
 describe("remapChunkLines", () => {

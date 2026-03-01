@@ -308,6 +308,21 @@ export type MemorySearchConfig = {
   sources?: Array<"memory" | "sessions">;
   /** Extra paths to include in memory search (directories or .md files). */
   extraPaths?: string[];
+  /** Obsidian vault integration for graph-aware memory workflows. */
+  obsidian?: {
+    /** Enable Obsidian vault hints and CLI-backed Obsidian tools. */
+    enabled?: boolean;
+    /** Vault root path (defaults to workspace memory directory). */
+    vaultPath?: string;
+    /** Inject Obsidian-specific usage hints into the system prompt. */
+    promptHints?: boolean;
+    cli?: {
+      /** Obsidian CLI executable path or command name. */
+      command?: string;
+      /** Timeout for Obsidian CLI commands. */
+      timeoutMs?: number;
+    };
+  };
   /** Experimental memory search settings. */
   experimental?: {
     /** Enable session transcript indexing (experimental, default: false). */
@@ -362,8 +377,14 @@ export type MemorySearchConfig = {
   };
   /** Chunking configuration. */
   chunking?: {
+    /** Chunking strategy: length-based or markdown-section-aware. */
+    strategy?: "length" | "markdown-sections";
     tokens?: number;
     overlap?: number;
+    /** Keep small files as a single chunk when below this size (chars). */
+    sectionMinChars?: number;
+    /** Split oversized sections when above this size (chars). */
+    sectionMaxChars?: number;
   };
   /** Sync behavior. */
   sync?: {

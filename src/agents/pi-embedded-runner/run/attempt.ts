@@ -39,6 +39,7 @@ import { DEFAULT_CONTEXT_TOKENS } from "../../defaults.js";
 import { resolveOpenClawDocsPath } from "../../docs-path.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { resolveImageSanitizationLimits } from "../../image-sanitization.js";
+import { resolveMemorySearchConfig } from "../../memory-search.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
 import { normalizeProviderId, resolveDefaultModelForAgent } from "../../model-selection.js";
 import { createOllamaStreamFn, OLLAMA_NATIVE_BASE_URL } from "../../ollama-stream.js";
@@ -719,6 +720,10 @@ export async function runEmbeddedAttempt(
       userTimeFormat,
       contextFiles,
       memoryCitationsMode: params.config?.memory?.citations,
+      memoryObsidianPromptHints:
+        params.config && sessionAgentId
+          ? Boolean(resolveMemorySearchConfig(params.config, sessionAgentId)?.obsidian.promptHints)
+          : false,
     });
     const systemPromptReport = buildSystemPromptReport({
       source: "run",

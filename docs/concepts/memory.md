@@ -283,6 +283,70 @@ Notes:
 - Only Markdown files are indexed.
 - Symlinks are ignored (files or directories).
 
+### Obsidian vault integration
+
+If your memory folder is an Obsidian vault, you can enable vault-aware prompts and
+Obsidian CLI tools:
+
+```json5
+agents: {
+  defaults: {
+    memorySearch: {
+      obsidian: {
+        enabled: true,
+        vaultPath: "./memory",
+        promptHints: true,
+        cli: {
+          command: "obsidian",
+          timeoutMs: 5000
+        }
+      }
+    }
+  }
+}
+```
+
+When enabled:
+
+- The system prompt nudges the agent to use `[[WikiLinks]]` and maintain graph-friendly notes.
+- Obsidian tools are exposed to the agent:
+  - `obsidian_search`
+  - `obsidian_backlinks`
+  - `obsidian_orphans`
+  - `obsidian_dead_ends`
+- Commands are constrained to an internal allowlist (no arbitrary shell passthrough).
+- You can seed behavior with a custom skill using the template at
+  [Obsidian Memory Workflow Skill Template](/reference/templates/OBSIDIAN_MEMORY_SKILL).
+
+### Chunking strategies
+
+Memory indexing supports two chunking strategies:
+
+- `length`: legacy token-window chunking.
+- `markdown-sections`: heading-aware section chunking with fallback to length splitting for oversized sections.
+
+```json5
+agents: {
+  defaults: {
+    memorySearch: {
+      chunking: {
+        strategy: "markdown-sections",
+        tokens: 400,
+        overlap: 80,
+        sectionMinChars: 500,
+        sectionMaxChars: 3000
+      }
+    }
+  }
+}
+```
+
+Guidance:
+
+- Keep related content under clear Markdown headings for best section-level retrieval.
+- Small notes stay intact (`sectionMinChars`).
+- Large sections are automatically split (`sectionMaxChars`) so embedding requests stay bounded.
+
 ### Gemini embeddings (native)
 
 Set the provider to `gemini` to use the Gemini embeddings API directly:

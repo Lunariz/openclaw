@@ -38,6 +38,7 @@ function buildMemorySection(params: {
   isMinimal: boolean;
   availableTools: Set<string>;
   citationsMode?: MemoryCitationsMode;
+  obsidianPromptHints?: boolean;
 }) {
   if (params.isMinimal) {
     return [];
@@ -57,6 +58,16 @@ function buildMemorySection(params: {
     lines.push(
       "Citations: include Source: <path#line> when it helps the user verify memory snippets.",
     );
+  }
+  if (params.obsidianPromptHints) {
+    lines.push(
+      "Obsidian vault mode is enabled: prefer meaningful note titles, organize notes in folders when useful, and write explicit [[WikiLinks]] between related notes.",
+    );
+    if (params.availableTools.has("obsidian_search")) {
+      lines.push(
+        "When link graph context matters, use Obsidian tools (obsidian_search, obsidian_backlinks, obsidian_orphans, obsidian_dead_ends) before deciding where to write or how to link notes.",
+      );
+    }
   }
   lines.push("");
   return lines;
@@ -231,6 +242,7 @@ export function buildAgentSystemPrompt(params: {
     channel: string;
   };
   memoryCitationsMode?: MemoryCitationsMode;
+  memoryObsidianPromptHints?: boolean;
 }) {
   const acpEnabled = params.acpEnabled !== false;
   const coreToolSummaries: Record<string, string> = {
@@ -245,6 +257,10 @@ export function buildAgentSystemPrompt(params: {
     process: "Manage background exec sessions",
     web_search: "Search the web (Brave API)",
     web_fetch: "Fetch and extract readable content from a URL",
+    obsidian_search: "Search Obsidian vault",
+    obsidian_backlinks: "Resolve backlinks for a note",
+    obsidian_orphans: "List orphan notes",
+    obsidian_dead_ends: "List dead-end notes",
     // Channel docking: add login tools here when a channel needs interactive linking.
     browser: "Control web browser",
     canvas: "Present/eval/snapshot the Canvas",
@@ -401,6 +417,7 @@ export function buildAgentSystemPrompt(params: {
     isMinimal,
     availableTools,
     citationsMode: params.memoryCitationsMode,
+    obsidianPromptHints: params.memoryObsidianPromptHints,
   });
   const docsSection = buildDocsSection({
     docsPath: params.docsPath,

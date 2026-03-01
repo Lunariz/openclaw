@@ -728,6 +728,20 @@ export const FIELD_HELP: Record<string, string> = {
     'Chooses which sources are indexed: "memory" reads MEMORY.md + memory files, and "sessions" includes transcript history. Keep ["memory"] unless you need recall from prior chat transcripts.',
   "agents.defaults.memorySearch.extraPaths":
     "Adds extra directories or .md files to the memory index beyond default memory files. Use this when key reference docs live elsewhere in your repo; keep paths small and intentional to avoid noisy recall.",
+  "agents.defaults.memorySearch.obsidian":
+    "Optional Obsidian vault integration for graph-aware note workflows (wiki-links and Obsidian CLI tools). Keep disabled unless your memory folder is managed as an Obsidian vault.",
+  "agents.defaults.memorySearch.obsidian.enabled":
+    "Enables Obsidian-specific prompt guidance and Obsidian CLI-backed tools for vault graph inspection. Leave disabled for standard memory behavior.",
+  "agents.defaults.memorySearch.obsidian.vaultPath":
+    "Sets the vault root path used by Obsidian CLI tools (default: workspace memory/). Point this to your actual Obsidian vault root when it differs from default memory layout.",
+  "agents.defaults.memorySearch.obsidian.promptHints":
+    "Injects Obsidian usage hints into the system prompt (wiki-link conventions and graph-aware memory writing). Disable only if you want Obsidian tools without prompt nudging.",
+  "agents.defaults.memorySearch.obsidian.cli":
+    "CLI execution options for Obsidian commands used by agent tools.",
+  "agents.defaults.memorySearch.obsidian.cli.command":
+    "Executable name/path for the Obsidian CLI tool (default: obsidian). Set an absolute path when PATH differs across runtime environments.",
+  "agents.defaults.memorySearch.obsidian.cli.timeoutMs":
+    "Timeout in milliseconds for each Obsidian CLI command invocation. Increase for large vault scans; lower to fail fast in automation flows.",
   "agents.defaults.memorySearch.experimental.sessionMemory":
     "Indexes session transcripts into memory search so responses can reference prior chat turns. Keep this off unless transcript recall is needed, because indexing cost and storage usage both increase.",
   "agents.defaults.memorySearch.provider":
@@ -760,10 +774,16 @@ export const FIELD_HELP: Record<string, string> = {
     "Enables the sqlite-vec extension used for vector similarity queries in memory search (default: true). Keep this enabled for normal semantic recall; disable only for debugging or fallback-only operation.",
   "agents.defaults.memorySearch.store.vector.extensionPath":
     "Overrides the auto-discovered sqlite-vec extension library path (`.dylib`, `.so`, or `.dll`). Use this when your runtime cannot find sqlite-vec automatically or you pin a known-good build.",
+  "agents.defaults.memorySearch.chunking.strategy":
+    'Selects chunking mode for embedding memory markdown: "length" preserves legacy token-window splitting, while "markdown-sections" chunks by heading structure with size fallbacks.',
   "agents.defaults.memorySearch.chunking.tokens":
     "Chunk size in tokens used when splitting memory sources before embedding/indexing. Increase for broader context per chunk, or lower to improve precision on pinpoint lookups.",
   "agents.defaults.memorySearch.chunking.overlap":
     "Token overlap between adjacent memory chunks to preserve context continuity near split boundaries. Use modest overlap to reduce boundary misses without inflating index size too aggressively.",
+  "agents.defaults.memorySearch.chunking.sectionMinChars":
+    "Minimum document/section size in characters before section-aware chunking starts splitting. Smaller files are kept whole for semantic coherence.",
+  "agents.defaults.memorySearch.chunking.sectionMaxChars":
+    "Maximum section size in characters before a section is split further using length-based fallback chunking. Tune to balance retrieval granularity vs context continuity.",
   "agents.defaults.memorySearch.query.maxResults":
     "Maximum number of memory hits returned from search before downstream reranking and prompt injection. Raise for broader recall, or lower for tighter prompts and faster responses.",
   "agents.defaults.memorySearch.query.minScore":

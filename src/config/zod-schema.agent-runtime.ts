@@ -540,6 +540,21 @@ export const MemorySearchSchema = z
     enabled: z.boolean().optional(),
     sources: z.array(z.union([z.literal("memory"), z.literal("sessions")])).optional(),
     extraPaths: z.array(z.string()).optional(),
+    obsidian: z
+      .object({
+        enabled: z.boolean().optional(),
+        vaultPath: z.string().optional(),
+        promptHints: z.boolean().optional(),
+        cli: z
+          .object({
+            command: z.string().optional(),
+            timeoutMs: z.number().int().positive().optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
     experimental: z
       .object({
         sessionMemory: z.boolean().optional(),
@@ -607,8 +622,11 @@ export const MemorySearchSchema = z
       .optional(),
     chunking: z
       .object({
+        strategy: z.union([z.literal("length"), z.literal("markdown-sections")]).optional(),
         tokens: z.number().int().positive().optional(),
         overlap: z.number().int().nonnegative().optional(),
+        sectionMinChars: z.number().int().positive().optional(),
+        sectionMaxChars: z.number().int().positive().optional(),
       })
       .strict()
       .optional(),

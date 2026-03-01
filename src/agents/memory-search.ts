@@ -9,6 +9,15 @@ export type ResolvedMemorySearchConfig = {
   enabled: boolean;
   sources: Array<"memory" | "sessions">;
   extraPaths: string[];
+  obsidian: {
+    enabled: boolean;
+    vaultPath: string;
+    promptHints: boolean;
+    cli: {
+      command: string;
+      timeoutMs: number;
+    };
+  };
   provider: "openai" | "local" | "gemini" | "voyage" | "mistral" | "auto";
   remote?: {
     baseUrl?: string;
@@ -40,8 +49,11 @@ export type ResolvedMemorySearchConfig = {
     };
   };
   chunking: {
+    strategy: "length" | "markdown-sections";
     tokens: number;
     overlap: number;
+    sectionMinChars: number;
+    sectionMaxChars: number;
   };
   sync: {
     onSessionStart: boolean;
@@ -99,6 +111,12 @@ const DEFAULT_TEMPORAL_DECAY_ENABLED = false;
 const DEFAULT_TEMPORAL_DECAY_HALF_LIFE_DAYS = 30;
 const DEFAULT_CACHE_ENABLED = true;
 const DEFAULT_SOURCES: Array<"memory" | "sessions"> = ["memory"];
+const DEFAULT_OBSIDIAN_ENABLED = false;
+const DEFAULT_OBSIDIAN_CLI_COMMAND = "obsidian";
+const DEFAULT_OBSIDIAN_CLI_TIMEOUT_MS = 5000;
+const DEFAULT_CHUNKING_STRATEGY: "length" | "markdown-sections" = "markdown-sections";
+const DEFAULT_SECTION_MIN_CHARS = 500;
+const DEFAULT_SECTION_MAX_CHARS = 3000;
 
 function normalizeSources(
   sources: Array<"memory" | "sessions"> | undefined,
@@ -197,6 +215,24 @@ function mergeConfig(
     .map((value) => value.trim())
     .filter(Boolean);
   const extraPaths = Array.from(new Set(rawPaths));
+  const obsidianVaultPathRaw =
+    overrides?.obsidian?.vaultPath ?? defaults?.obsidian?.vaultPath ?? "memory";
+  const obsidian = {
+    enabled:
+      overrides?.obsidian?.enabled ?? defaults?.obsidian?.enabled ?? DEFAULT_OBSIDIAN_ENABLED,
+    vaultPath: resolveUserPath(obsidianVaultPathRaw),
+    promptHints: overrides?.obsidian?.promptHints ?? defaults?.obsidian?.promptHints ?? true,
+    cli: {
+      command:
+        overrides?.obsidian?.cli?.command ??
+        defaults?.obsidian?.cli?.command ??
+        DEFAULT_OBSIDIAN_CLI_COMMAND,
+      timeoutMs:
+        overrides?.obsidian?.cli?.timeoutMs ??
+        defaults?.obsidian?.cli?.timeoutMs ??
+        DEFAULT_OBSIDIAN_CLI_TIMEOUT_MS,
+    },
+  };
   const vector = {
     enabled: overrides?.store?.vector?.enabled ?? defaults?.store?.vector?.enabled ?? true,
     extensionPath:
@@ -208,8 +244,20 @@ function mergeConfig(
     vector,
   };
   const chunking = {
+    strategy:
+      overrides?.chunking?.strategy ??
+      defaults?.chunking?.strategy ??
+      DEFAULT_CHUNKING_STRATEGY,
     tokens: overrides?.chunking?.tokens ?? defaults?.chunking?.tokens ?? DEFAULT_CHUNK_TOKENS,
     overlap: overrides?.chunking?.overlap ?? defaults?.chunking?.overlap ?? DEFAULT_CHUNK_OVERLAP,
+    sectionMinChars:
+      overrides?.chunking?.sectionMinChars ??
+      defaults?.chunking?.sectionMinChars ??
+      DEFAULT_SECTION_MIN_CHARS,
+    sectionMaxChars:
+      overrides?.chunking?.sectionMaxChars ??
+      defaults?.chunking?.sectionMaxChars ??
+      DEFAULT_SECTION_MAX_CHARS,
   };
   const sync = {
     onSessionStart: overrides?.sync?.onSessionStart ?? defaults?.sync?.onSessionStart ?? true,
@@ -279,6 +327,12 @@ function mergeConfig(
   };
 
   const overlap = clampNumber(chunking.overlap, 0, Math.max(0, chunking.tokens - 1));
+  const sectionMinChars = clampInt(chunking.sectionMinChars, 1, Number.MAX_SAFE_INTEGER);
+  const sectionMaxChars = clampInt(
+    chunking.sectionMaxChars,
+    Math.max(2, sectionMinChars + 1),
+    Number.MAX_SAFE_INTEGER,
+  );
   const minScore = clampNumber(query.minScore, 0, 1);
   const vectorWeight = clampNumber(hybrid.vectorWeight, 0, 1);
   const textWeight = clampNumber(hybrid.textWeight, 0, 1);
@@ -300,6 +354,15 @@ function mergeConfig(
     enabled,
     sources,
     extraPaths,
+    obsidian: {
+      enabled: Boolean(obsidian.enabled),
+      vaultPath: obsidian.vaultPath,
+      promptHints: Boolean(obsidian.promptHints),
+      cli: {
+        command: obsidian.cli.command.trim() || DEFAULT_OBSIDIAN_CLI_COMMAND,
+        timeoutMs: clampInt(obsidian.cli.timeoutMs, 250, 120_000),
+      },
+    },
     provider,
     remote,
     experimental: {
@@ -309,7 +372,16 @@ function mergeConfig(
     model,
     local,
     store,
-    chunking: { tokens: Math.max(1, chunking.tokens), overlap },
+    chunking: {
+      strategy:
+        chunking.strategy === "length" || chunking.strategy === "markdown-sections"
+          ? chunking.strategy
+          : DEFAULT_CHUNKING_STRATEGY,
+      tokens: Math.max(1, chunking.tokens),
+      overlap,
+      sectionMinChars,
+      sectionMaxChars,
+    },
     sync: {
       ...sync,
       sessions: {

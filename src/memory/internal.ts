@@ -181,7 +181,15 @@ export async function buildFileEntry(
   };
 }
 
-export function chunkMarkdown(
+type ChunkingConfig = {
+  strategy?: "length" | "markdown-sections";
+  tokens: number;
+  overlap: number;
+  sectionMinChars?: number;
+  sectionMaxChars?: number;
+};
+
+function chunkMarkdownByLength(
   content: string,
   chunking: { tokens: number; overlap: number },
 ): MemoryChunk[] {
@@ -262,6 +270,100 @@ export function chunkMarkdown(
   }
   flush();
   return chunks;
+}
+
+function splitSectionRangeToLengthChunks(params: {
+  lines: string[];
+  startLine: number;
+  chunking: { tokens: number; overlap: number };
+}): MemoryChunk[] {
+  const sectionText = params.lines.join("\n");
+  const relative = chunkMarkdownByLength(sectionText, params.chunking);
+  return relative.map((chunk) => ({
+    ...chunk,
+    startLine: params.startLine + chunk.startLine - 1,
+    endLine: params.startLine + chunk.endLine - 1,
+  }));
+}
+
+function collectHeadingLineIndexes(lines: string[]): number[] {
+  const headingIndexes: number[] = [];
+  let inCodeFence = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const trimmed = line.trim();
+    if (/^```/.test(trimmed)) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+    if (inCodeFence) {
+      continue;
+    }
+    if (/^#{1,6}\s+\S+/.test(trimmed)) {
+      headingIndexes.push(i);
+    }
+  }
+  return headingIndexes;
+}
+
+export function chunkMarkdownBySections(content: string, chunking: ChunkingConfig): MemoryChunk[] {
+  const lines = content.split("\n");
+  if (lines.length === 0) {
+    return [];
+  }
+  const sectionMinChars = Math.max(1, chunking.sectionMinChars ?? 500);
+  const sectionMaxChars = Math.max(sectionMinChars + 1, chunking.sectionMaxChars ?? 3000);
+  if (content.length <= sectionMinChars) {
+    return [
+      {
+        startLine: 1,
+        endLine: lines.length,
+        text: content,
+        hash: hashText(content),
+      },
+    ];
+  }
+
+  const headingIndexes = collectHeadingLineIndexes(lines);
+  if (headingIndexes.length === 0) {
+    return chunkMarkdownByLength(content, chunking);
+  }
+
+  const sectionStarts = headingIndexes[0] === 0 ? headingIndexes : [0, ...headingIndexes];
+  const chunks: MemoryChunk[] = [];
+  for (let i = 0; i < sectionStarts.length; i += 1) {
+    const startIndex = sectionStarts[i] ?? 0;
+    const nextStart = sectionStarts[i + 1];
+    const endExclusive = typeof nextStart === "number" ? nextStart : lines.length;
+    const sectionLines = lines.slice(startIndex, endExclusive);
+    const text = sectionLines.join("\n");
+    const startLine = startIndex + 1;
+    const endLine = endExclusive;
+    if (text.length <= sectionMaxChars) {
+      chunks.push({
+        startLine,
+        endLine,
+        text,
+        hash: hashText(text),
+      });
+      continue;
+    }
+    chunks.push(
+      ...splitSectionRangeToLengthChunks({
+        lines: sectionLines,
+        startLine,
+        chunking,
+      }),
+    );
+  }
+  return chunks;
+}
+
+export function chunkMarkdown(content: string, chunking: ChunkingConfig): MemoryChunk[] {
+  if (chunking.strategy === "markdown-sections") {
+    return chunkMarkdownBySections(content, chunking);
+  }
+  return chunkMarkdownByLength(content, chunking);
 }
 
 /**
